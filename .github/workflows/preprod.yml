@@ -1,0 +1,44 @@
+name: Deploy to Pre-Prod
+
+on:
+  push:
+    branches:
+      - pre-prod
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy-preprod:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: validate with maven
+        run: mvn validate
+
+      - name: compile with maven
+        run: mvn compile
+
+      - name: test with maven
+        run: mvn test
+
+      - name: package with maven
+        run: mvn package
+
+      - name: verify war file
+        run: ls -lh target/
+
+      - name: Deploy to Pre-Prod Tomcat
+        run: |
+          WAR_FILE=$(ls target/*.war | head -n 1)
+          curl -u "${{ secrets.PREPROD_USER }}:${{ secrets.PREPROD_PASSWORD }}" \
+            -T "$WAR_FILE" \
+            "http://${{ secrets.PREPROD_HOST }}:8080/manager/text/deploy?path=/app&update=true"
